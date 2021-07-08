@@ -31,9 +31,7 @@ app.json
 ```json
 {
   "expo": {
-    ...
     "plugins": [
-      ...
       [
         "jpush-expo-config-plugin",
         {
@@ -48,5 +46,5 @@ app.json
 
 接下来, 按照 ["添加自定义 Native 代码"](https://docs.expo.io/workflow/customizing/) 指南中的描述重新构建应用程序
 ```
-expo prebuild --clean
+expo prebuild
 ```

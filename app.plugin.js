@@ -11,13 +11,13 @@ let JPUSH_APPKEY = 'appKey',
 
 const withJPush = (config, props) => {
   if (!props || !props.appKey || !props.channel)
-    throw new Error('[JPushPlugin] 请传入参数 appKey & channel');
+    throw new Error('[JPushExpoConfigPlugin] 请传入参数 appKey & channel');
   JPUSH_APPKEY = props.appKey;
   JPUSH_CHANNEL = props.channel;
+  config = setAppDelegate(config);
   config = setAndroidManifest(config);
   config = setAppBuildGradle(config);
   config = setSettingsGradle(config);
-  config = setAppDelegate(config);
 
   return config;
 };
@@ -28,7 +28,7 @@ const setAppDelegate = (config) =>
     if (
       config.modResults.contents.indexOf('#import <RCTJPushModule.h>') === -1
     ) {
-      console.log('\n[JPushPlugin] 配置 AppDelegate import ... ');
+      console.log('\n[JPushExpoConfigPlugin] 配置 AppDelegate import ... ');
       config.modResults.contents =
         `#import <RCTJPushModule.h>
 #ifdef NSFoundationVersionNumber_iOS_9_x_Max
@@ -37,23 +37,25 @@ const setAppDelegate = (config) =>
 
 ` + config.modResults.contents;
     }
-    const didFinishLaunchingWithOptionsResult =
-      config.modResults.contents.match(
-        /didFinishLaunchingWithOptions([\s\S]*)launchOptions\n\{\n/
-      );
-    const [didFinishLaunchingWithOptions] = didFinishLaunchingWithOptionsResult;
-    const didFinishLaunchingWithOptionsIndex =
-      didFinishLaunchingWithOptionsResult.index;
-    const didFinishLaunchingWithOptionsStartIndex =
-      didFinishLaunchingWithOptionsIndex + didFinishLaunchingWithOptions.length;
     if (
       config.modResults.contents.indexOf(
         'JPUSHService setupWithOption:launchOptions'
       ) === -1
     ) {
       console.log(
-        '\n[JPushPlugin] 配置 AppDelegate didFinishLaunchingWithOptions ... '
+        '\n[JPushExpoConfigPlugin] 配置 AppDelegate didFinishLaunchingWithOptions ... '
       );
+      const didFinishLaunchingWithOptionsResult =
+        config.modResults.contents.match(
+          /didFinishLaunchingWithOptions([\s\S]*)launchOptions\n\{\n/
+        );
+      const [didFinishLaunchingWithOptions] =
+        didFinishLaunchingWithOptionsResult;
+      const didFinishLaunchingWithOptionsIndex =
+        didFinishLaunchingWithOptionsResult.index;
+      const didFinishLaunchingWithOptionsStartIndex =
+        didFinishLaunchingWithOptionsIndex +
+        didFinishLaunchingWithOptions.length;
       config.modResults.contents =
         config.modResults.contents.slice(
           0,
@@ -81,7 +83,9 @@ const setAppDelegate = (config) =>
           didFinishLaunchingWithOptionsStartIndex
         );
     } else {
-      console.log('\n[JPushPlugin] 配置 AppDelegate appKey & channel ... ');
+      console.log(
+        '\n[JPushExpoConfigPlugin] 配置 AppDelegate appKey & channel ... '
+      );
       config.modResults.contents = config.modResults.contents.replace(
         /appKey\:\@\"(.*)\" channel\:\@\"(.*)\" /,
         `appKey:@"${JPUSH_APPKEY}" channel:@"${JPUSH_CHANNEL}" `
@@ -92,7 +96,7 @@ const setAppDelegate = (config) =>
         '// ************************************************JPush start************************************************'
       ) === -1
     ) {
-      console.log('\n[JPushPlugin] 配置 AppDelegate other ... ');
+      console.log('\n[JPushExpoConfigPlugin] 配置 AppDelegate other ... ');
       config.modResults.contents = config.modResults.contents.replace(
         /\@end([\n]*)$/,
         `// ************************************************JPush start************************************************
@@ -176,21 +180,47 @@ const setAndroidManifest = (config) =>
         'JPUSH_CHANNEL'
       ) === -1
     ) {
-      console.log('\n[JPushPlugin] 配置 AndroidManifest meta-data ... ');
+      console.log(
+        '\n[JPushExpoConfigPlugin] 配置 AndroidManifest JPUSH_CHANNEL ... '
+      );
       AndroidConfig.Manifest.addMetaDataItemToMainApplication(
         config.modResults.manifest.application[0],
         'JPUSH_CHANNEL',
         '${JPUSH_CHANNEL}'
+      );
+    }
+    if (
+      AndroidConfig.Manifest.findMetaDataItem(
+        config.modResults.manifest.application[0],
+        'JPUSH_APPKEY'
+      ) === -1
+    ) {
+      console.log(
+        '\n[JPushExpoConfigPlugin] 配置 AndroidManifest JPUSH_APPKEY ... '
       );
       AndroidConfig.Manifest.addMetaDataItemToMainApplication(
         config.modResults.manifest.application[0],
         'JPUSH_APPKEY',
         '${JPUSH_APPKEY}'
       );
-      console.log('\n[JPushPlugin] 配置 AndroidManifest xmlns:tools ... ');
+    }
+    if (
+      config.modResults.manifest.application[0].activity.findIndex(
+        (item) =>
+          item.$['android:name'] === 'cn.jpush.android.service.JNotifyActivity'
+      ) === -1
+    ) {
+      console.log(
+        '\n[JPushExpoConfigPlugin] 此后两项为BUG修复, 对应版本 jpush-react-native 2.8.3'
+      );
+      console.log(
+        '\n[JPushExpoConfigPlugin] - 配置 AndroidManifest xmlns:tools ... '
+      );
       config.modResults.manifest.$['xmlns:tools'] =
         'http://schemas.android.com/tools';
-      console.log('\n[JPushPlugin] 配置 AndroidManifest activity ... ');
+      console.log(
+        '\n[JPushExpoConfigPlugin] - 配置 AndroidManifest activity ... '
+      );
       config.modResults.manifest.application[0].activity.push({
         $: {
           'android:name': 'cn.jpush.android.service.JNotifyActivity',
@@ -239,10 +269,10 @@ const setAppBuildGradle = (config) =>
       const startStringLength = startString.length;
       const startStringIndex =
         config.modResults.contents.indexOf(startString) + startStringLength;
-      // 判断是否已配置
+      console.log(
+        '\n[JPushExpoConfigPlugin] 配置 build.gradle appKey & channel ... '
+      );
       if (config.modResults.contents.indexOf('JPUSH_APPKEY') === -1) {
-        // 插入 build.gradle defaultConfig 配置
-        console.log('\n[JPushPlugin] 配置 build.gradle defaultConfig ... ');
         config.modResults.contents =
           config.modResults.contents.slice(0, startStringIndex) +
           `        manifestPlaceholders = [
@@ -251,8 +281,6 @@ const setAppBuildGradle = (config) =>
         ]\n` +
           config.modResults.contents.slice(startStringIndex);
       } else {
-        // 更新 build.gradle defaultConfig 配置
-        console.log('\n[JPushPlugin] 配置 build.gradle appKey & channel ... ');
         config.modResults.contents = config.modResults.contents.replace(
           /manifestPlaceholders([\s\S]*)JPUSH_APPKEY([\s\S]*)JPUSH_CHANNEL(.*)"\n(.*)\]\n/,
           `manifestPlaceholders = [
@@ -263,31 +291,44 @@ const setAppBuildGradle = (config) =>
       }
     } else
       throw new Error(
-        '[JPushPlugin] 无法完成 build.gradle - defaultConfig 配置'
+        '[JPushExpoConfigPlugin] 无法完成 build.gradle - defaultConfig 配置'
       );
-    if (
-      config.modResults.contents.indexOf(
-        `implementation project(':jpush-react-native')`
-      ) === -1
-    ) {
-      console.log('\n[JPushPlugin] 配置 build.gradle dependencies ... ');
-      const dependencies = config.modResults.contents.match(/dependencies {\n/);
-      if (dependencies) {
-        const [startString] = dependencies;
-        const startStringLength = startString.length;
-        const startStringIndex =
-          config.modResults.contents.indexOf(startString) + startStringLength;
-        // 插入 build.gradle dependencies 配置
+    const dependencies = config.modResults.contents.match(/dependencies {\n/);
+    if (dependencies) {
+      const [startString] = dependencies;
+      const startStringLength = startString.length;
+      const startStringIndex =
+        config.modResults.contents.indexOf(startString) + startStringLength;
+      if (
+        config.modResults.contents.indexOf(
+          `implementation project(':jpush-react-native')`
+        ) === -1
+      ) {
+        console.log(
+          '\n[JPushExpoConfigPlugin] 配置 build.gradle dependencies jpush-react-native ... '
+        );
         config.modResults.contents =
           config.modResults.contents.slice(0, startStringIndex) +
-          `    implementation project(':jpush-react-native')
-    implementation project(':jcore-react-native')\n` +
+          `    implementation project(':jpush-react-native')\n` +
           config.modResults.contents.slice(startStringIndex);
-      } else
-        throw new Error(
-          '[JPushPlugin] 无法完成 build.gradle dependencies 配置'
+      }
+      if (
+        config.modResults.contents.indexOf(
+          `implementation project(':jcore-react-native')`
+        ) === -1
+      ) {
+        console.log(
+          '\n[JPushExpoConfigPlugin] 配置 build.gradle dependencies jcore-react-native ... '
         );
-    }
+        config.modResults.contents =
+          config.modResults.contents.slice(0, startStringIndex) +
+          `    implementation project(':jcore-react-native')\n` +
+          config.modResults.contents.slice(startStringIndex);
+      }
+    } else
+      throw new Error(
+        '[JPushExpoConfigPlugin] 无法完成 build.gradle dependencies 配置'
+      );
 
     return config;
   });
@@ -298,12 +339,24 @@ const setSettingsGradle = (config) =>
     if (
       config.modResults.contents.indexOf(`include ':jpush-react-native'`) === -1
     ) {
-      console.log('\n[JPushPlugin] 配置 settings.gradle ... ');
+      console.log(
+        '\n[JPushExpoConfigPlugin] 配置 settings.gradle include jpush-react-native ... '
+      );
       config.modResults.contents =
         config.modResults.contents +
         `
 include ':jpush-react-native'
-project(':jpush-react-native').projectDir = new File(rootProject.projectDir, '../node_modules/jpush-react-native/android')
+project(':jpush-react-native').projectDir = new File(rootProject.projectDir, '../node_modules/jpush-react-native/android')`;
+    }
+    if (
+      config.modResults.contents.indexOf(`include ':jcore-react-native'`) === -1
+    ) {
+      console.log(
+        '\n[JPushExpoConfigPlugin] 配置 settings.gradle include jcore-react-native ... '
+      );
+      config.modResults.contents =
+        config.modResults.contents +
+        `
 include ':jcore-react-native'
 project(':jcore-react-native').projectDir = new File(rootProject.projectDir, '../node_modules/jcore-react-native/android')`;
     }
