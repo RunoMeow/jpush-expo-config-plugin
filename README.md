@@ -2,7 +2,7 @@
 
 An expo config plugin for JPush
 
-一个极光推送的 Expo 自动配置插件
+一个极光推送的 Expo 自动配置插件, 免去配置原生项目的繁琐步骤
 
 此软件包不能在 "Expo Go" 应用程序中使用
 
@@ -45,6 +45,7 @@ app.json
 ```
 
 接下来, 按照 ["添加自定义 Native 代码"](https://docs.expo.io/workflow/customizing/) 指南中的描述重新构建应用程序
+
 ```
 expo prebuild
 ```
