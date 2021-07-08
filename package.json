@@ -1,7 +1,8 @@
 {
   "name": "jpush-expo-config-plugin",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "An expo config plugin for jpush",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/RunoMeow/jpush-expo-config-plugin.git"
