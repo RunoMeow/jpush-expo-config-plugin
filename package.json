@@ -1,6 +1,6 @@
 {
   "name": "jpush-expo-config-plugin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "An expo config plugin for jpush",
   "main": "index.js",
   "repository": {
