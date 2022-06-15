@@ -21,9 +21,6 @@ const withJPush = (config, props) => {
   return config;
 };
 
-
-
-
 // 配置 iOS AppDelegate
 const setAppDelegate = (config) =>
   withAppDelegate(config, (config) => {
@@ -39,35 +36,15 @@ const setAppDelegate = (config) =>
 
 ` + config.modResults.contents;
     }
+    
     if (
       config.modResults.contents.indexOf(
-        'JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];'
+        'JPUSHService setupWithOption:launchOptions'
       ) === -1
     ) {
       console.log(
         '\n[JPushExpoConfigPlugin] 配置 AppDelegate didFinishLaunchingWithOptions ... '
       );
-
-      const startIndex = config.modResults.contents.indexOf('rootView.backgroundColor =');
-      config.modResults.contents =
-        config.modResults.contents.slice(
-          0,
-          startIndex
-        ) + `// APNS
-        JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];
-        if (@available(iOS 12.0, *)) {
-          entity.types = JPAuthorizationOptionAlert|JPAuthorizationOptionBadge|JPAuthorizationOptionSound|JPAuthorizationOptionProvidesAppNotificationSettings;
-        }
-        [JPUSHService registerForRemoteNotificationConfig:entity delegate:self];
-        [launchOptions objectForKey: UIApplicationLaunchOptionsRemoteNotificationKey];
-        // 自定义消息
-        NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
-        [defaultCenter addObserver:self selector:@selector(networkDidReceiveMessage:) name:kJPFNetworkDidReceiveMessageNotification object:nil];
-        // 地理围栏
-        [JPUSHService registerLbsGeofenceDelegate:self withLaunchOptions:launchOptions];
-` + config.modResults.contents.slice(
-          startIndex
-        )
       const didFinishLaunchingWithOptionsResult =
         config.modResults.contents.match(
           /didFinishLaunchingWithOptions([\s\S]*)launchOptions\n\{\n/
@@ -84,12 +61,35 @@ const setAppDelegate = (config) =>
           0,
           didFinishLaunchingWithOptionsStartIndex
         ) +
-        `  
-        
+        `  // JPush初始化配置
+  [JPUSHService setupWithOption:launchOptions appKey:@"${JPUSH_APPKEY}" channel:@"${JPUSH_CHANNEL}" apsForProduction:YES];
+  // APNS
+  JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];
+  if (@available(iOS 12.0, *)) {
+    entity.types = JPAuthorizationOptionAlert|JPAuthorizationOptionBadge|JPAuthorizationOptionSound|JPAuthorizationOptionProvidesAppNotificationSettings;
+  }
+  [JPUSHService registerForRemoteNotificationConfig:entity delegate:self];
+  [launchOptions objectForKey: UIApplicationLaunchOptionsRemoteNotificationKey];
+  // 自定义消息
+  NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
+  [defaultCenter addObserver:self selector:@selector(networkDidReceiveMessage:) name:kJPFNetworkDidReceiveMessageNotification object:nil];
+  // 地理围栏
+  [JPUSHService registerLbsGeofenceDelegate:self withLaunchOptions:launchOptions];
+#if defined(FB_SONARKIT_ENABLED) && __has_include(<FlipperKit/FlipperClient.h>)
+  InitializeFlipper(application);
+#endif
 ` +
         config.modResults.contents.slice(
           didFinishLaunchingWithOptionsStartIndex
         );
+    } else {
+      console.log(
+        '\n[JPushExpoConfigPlugin] 配置 AppDelegate appKey & channel ... '
+      );
+      config.modResults.contents = config.modResults.contents.replace(
+        /appKey\:\@\"(.*)\" channel\:\@\"(.*)\" /,
+        `appKey:@"${JPUSH_APPKEY}" channel:@"${JPUSH_CHANNEL}" `
+      );
     }
     if (config.modResults.contents.indexOf('return [super application:application didRegisterForRemoteNotificationsWithDeviceToken:deviceToken];') > -1) {
       config.modResults.contents = config.modResults.contents.replace('return [super application:application didRegisterForRemoteNotificationsWithDeviceToken:deviceToken];', '[JPUSHService registerDeviceToken:deviceToken];')
